@@ -2,11 +2,19 @@
 #include <iostream>
 #include <vector>
 #include <cmath> // for pow function
+#include <map>
 
-//NOTE TO MR. ARK https://stackoverflow.com/questions/1452721/why-is-using-namespace-std-considered-bad-practice
 
 typedef std::vector <double> dvector;
 typedef std::vector <dvector> dmatrix;
+
+
+
+
+using namespace std;
+
+
+
 
 
 /**
@@ -43,16 +51,14 @@ void display(const dmatrix & a_matrix);
  * \param b_vector Known values.
  * \return returns unknown dvector X
  */
-dvector solve_x(const dmatrix & a_matrix, const dvector & b_vector);
-
+dvector solve_x(const dmatrix & a_matrix, const dvector & b_vector, map<dmatrix,double> & opt_map);
 
 /**
  * \brief Uses recursion to determine the determinant of a matrix. Base case is 2x2.
  * \param a_matrix Input matrix.
  * \return The Determinant of a_matrix.
  */
-double det(const dmatrix & a_matrix);
-
+double det(const dmatrix & a_matrix, map<dmatrix,double> & opt_map);
 
 /**
  * \brief Replaces a column with a vector.
@@ -63,23 +69,24 @@ double det(const dmatrix & a_matrix);
  */
 dmatrix replace(dmatrix replace_matrix, int col, const dvector & b_vector);
 
-
 /**
- * \brief Gets the minor matrix of a_matrix by crossing out the first row and a column position.
+ * \brief Gets the minor_self matrix of a_matrix by crossing out the first row and a column position.
  * \param a_matrix The matrix to perform the operation on.
  * \param col Column position.
  * \return The smaller matrix
  */
-dmatrix minor(const dmatrix & a_matrix, int col);
+ dmatrix minor_self(const dmatrix & a_matrix, int col);
 
 
 //-------------------------------------------
 int main() {
 
+	std::map<dmatrix,double> zation_map;
+
 	auto a_matrix = get_a();
 	display(a_matrix);
 	const auto b_vector = get_b(a_matrix.size());
-	const auto x_vector = solve_x(a_matrix, b_vector);
+	const auto x_vector = solve_x(a_matrix, b_vector, zation_map);
 	display(x_vector);
 
 	return (0);
@@ -140,31 +147,40 @@ void display(const dmatrix & a_matrix) {
 	}
 }
 
-dvector solve_x(const dmatrix & a_matrix, const dvector & b_vector) {
+dvector solve_x(const dmatrix & a_matrix, const dvector & b_vector, map<dmatrix,double> & opt_map) {
 	auto solution = dvector();
+	auto solved_a_matrix = det(a_matrix, opt_map);
 	for (size_t i = 0; i < a_matrix.size(); i++)
 	{
-		solution.push_back(det(replace(a_matrix, i, b_vector)) / det(a_matrix));
+		solution.push_back(det(replace(a_matrix, i, b_vector), opt_map) / solved_a_matrix);
 	}
 	return solution;
 }
 
-double det(const dmatrix & a_matrix) {
-	auto det_value = 0.0;
-	if (a_matrix.size() == 1)
-	{
-		return a_matrix[0][0];
+double det(const dmatrix & a_matrix, map<dmatrix,double> & opt_map) {	
+	if (opt_map.find(a_matrix) != opt_map.end())
+	{	
+		return opt_map.at(a_matrix);
 	}
-	if (a_matrix.size() == 2)
+	else
 	{
-		det_value = a_matrix[0][0] * a_matrix[1][1] - a_matrix[0][1] * a_matrix[1][0];
-		return det_value;
+		auto det_value = 0.0;
+		if (a_matrix.size() == 1)
+		{
+			return a_matrix[0][0];
+		}
+		if (a_matrix.size() == 2)
+		{
+			det_value = a_matrix[0][0] * a_matrix[1][1] - a_matrix[0][1] * a_matrix[1][0];
+			return det_value;
+		}
+		for (size_t p = 0; p < a_matrix[0].size(); p++)
+		{
+			det_value = det_value + a_matrix[0][p] * pow(-1, p) * det(minor_self(a_matrix, p), opt_map);
+		}
+		opt_map.insert(pair<dmatrix,double>(a_matrix,det_value));
+		return det_value;	
 	}
-	for (size_t p = 0; p < a_matrix[0].size(); p++)
-	{
-		det_value = det_value + a_matrix[0][p] * pow(-1, p) * det(minor(a_matrix, p));
-	}
-	return det_value;
 }
 
 dmatrix replace(dmatrix replace_matrix, const int col, const dvector & b_vector) {
@@ -175,7 +191,7 @@ dmatrix replace(dmatrix replace_matrix, const int col, const dvector & b_vector)
 	return replace_matrix;
 }
 
-dmatrix minor(const dmatrix & a_matrix, const int col) {
+dmatrix minor_self(const dmatrix & a_matrix, const int col) {
 	dmatrix temp_matrix;
 	for (auto i = 1; i < a_matrix.size(); i++)
 	{
